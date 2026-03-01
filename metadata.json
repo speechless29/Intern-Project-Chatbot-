@@ -1,0 +1,5 @@
+{
+  "name": "Tin Chat",
+  "description": "A simple ChatGPT-like interface powered by Tin with local history persistence.",
+  "requestFramePermissions": []
+}
