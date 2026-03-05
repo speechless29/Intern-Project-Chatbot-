@@ -1,39 +1,38 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Plus, 
-  MessageSquare, 
-  Trash2, 
-  Send, 
-  User, 
-  Bot, 
-  Menu, 
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Plus,
+  MessageSquare,
+  Trash2,
+  Send,
+  User,
+  Bot,
+  Menu,
   X,
   ChevronLeft,
   ChevronRight,
-  MoreVertical
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { sendMessageStream, generateTitle } from './services/geminiService';
-import { Conversation, Message } from './types';
+  MoreVertical,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import ReactMarkdown from "react-markdown";
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { sendMessageStream, generateTitle } from "./services/geminiService";
 
-function cn(...inputs: ClassValue[]) {
+function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const STORAGE_KEY = 'gemini_chat_history';
+const STORAGE_KEY = "gemini_chat_history";
 
 export default function App() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [input, setInput] = useState('');
+  const [conversations, setConversations] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Load from localStorage
   useEffect(() => {
@@ -46,7 +45,7 @@ export default function App() {
           setActiveId(parsed[0].id);
         }
       } catch (e) {
-        console.error('Failed to parse history', e);
+        console.error("Failed to parse history", e);
       }
     }
   }, []);
@@ -58,26 +57,26 @@ export default function App() {
 
   // Scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversations, activeId, isLoading]);
 
-  const activeConversation = conversations.find(c => c.id === activeId);
+  const activeConversation = conversations.find((c) => c.id === activeId);
 
   const createNewChat = () => {
-    const newChat: Conversation = {
+    const newChat = {
       id: crypto.randomUUID(),
-      title: 'New Chat',
+      title: "New Chat",
       messages: [],
       updatedAt: Date.now(),
     };
-    setConversations(prev => [newChat, ...prev]);
+    setConversations((prev) => [newChat, ...prev]);
     setActiveId(newChat.id);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
-  const deleteChat = (id: string, e: React.MouseEvent) => {
+  const deleteChat = (id, e) => {
     e.stopPropagation();
-    setConversations(prev => prev.filter(c => c.id !== id));
+    setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) {
       setActiveId(null);
     }
@@ -90,9 +89,9 @@ export default function App() {
     let currentConversations = [...conversations];
 
     if (!currentId) {
-      const newChat: Conversation = {
+      const newChat = {
         id: crypto.randomUUID(),
-        title: 'New Chat',
+        title: "New Chat",
         messages: [],
         updatedAt: Date.now(),
       };
@@ -102,14 +101,14 @@ export default function App() {
       currentId = newChat.id;
     }
 
-    const userMessage: Message = {
+    const userMessage = {
       id: crypto.randomUUID(),
-      role: 'user',
+      role: "user",
       content: input,
       timestamp: Date.now(),
     };
 
-    const updatedConversations = currentConversations.map(c => {
+    const updatedConversations = currentConversations.map((c) => {
       if (c.id === currentId) {
         return {
           ...c,
@@ -121,84 +120,97 @@ export default function App() {
     });
 
     setConversations(updatedConversations);
-    setInput('');
+    setInput("");
     setIsLoading(true);
 
     try {
-      const chat = updatedConversations.find(c => c.id === currentId)!;
-      const history = chat.messages.slice(0, -1).map(m => ({
+      const chat = updatedConversations.find((c) => c.id === currentId);
+      const history = chat.messages.slice(0, -1).map((m) => ({
         role: m.role,
-        parts: [{ text: m.content }]
+        parts: [{ text: m.content }],
       }));
 
       const assistantMessageId = crypto.randomUUID();
-      let assistantContent = '';
+      let assistantContent = "";
 
       // Add empty assistant message first
-      setConversations(prev => prev.map(c => {
-        if (c.id === currentId) {
-          return {
-            ...c,
-            messages: [...c.messages, {
-              id: assistantMessageId,
-              role: 'model',
-              content: '',
-              timestamp: Date.now()
-            }],
-          };
-        }
-        return c;
-      }));
-
-      const stream = sendMessageStream(userMessage.content, history);
-      
-      for await (const chunk of stream) {
-        assistantContent += chunk;
-        setConversations(prev => prev.map(c => {
+      setConversations((prev) =>
+        prev.map((c) => {
           if (c.id === currentId) {
             return {
               ...c,
-              messages: c.messages.map(m => 
-                m.id === assistantMessageId ? { ...m, content: assistantContent } : m
-              ),
+              messages: [
+                ...c.messages,
+                {
+                  id: assistantMessageId,
+                  role: "model",
+                  content: "",
+                  timestamp: Date.now(),
+                },
+              ],
             };
           }
           return c;
-        }));
+        }),
+      );
+
+      const stream = sendMessageStream(userMessage.content, history);
+
+      for await (const chunk of stream) {
+        assistantContent += chunk;
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.id === currentId) {
+              return {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, content: assistantContent }
+                    : m,
+                ),
+              };
+            }
+            return c;
+          }),
+        );
       }
 
       // Generate title if it's the first message
       if (chat.messages.length === 1) {
         const title = await generateTitle(userMessage.content);
-        setConversations(prev => prev.map(c => 
-          c.id === currentId ? { ...c, title } : c
-        ));
+        setConversations((prev) =>
+          prev.map((c) => (c.id === currentId ? { ...c, title } : c)),
+        );
       }
-
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error("Chat error:", error);
       // Add error message
-      setConversations(prev => prev.map(c => {
-        if (c.id === currentId) {
-          return {
-            ...c,
-            messages: [...c.messages, {
-              id: crypto.randomUUID(),
-              role: 'model',
-              content: 'Sorry, I encountered an error. Please try again.',
-              timestamp: Date.now()
-            }],
-          };
-        }
-        return c;
-      }));
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id === currentId) {
+            return {
+              ...c,
+              messages: [
+                ...c.messages,
+                {
+                  id: crypto.randomUUID(),
+                  role: "model",
+                  content: "Sorry, I encountered an error. Please try again.",
+                  timestamp: Date.now(),
+                },
+              ],
+            };
+          }
+          return c;
+        }),
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -222,13 +234,13 @@ export default function App() {
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ 
+        animate={{
           width: isSidebarOpen ? 260 : 0,
-          x: isSidebarOpen ? 0 : -260
+          x: isSidebarOpen ? 0 : -260,
         }}
         className={cn(
           "fixed md:relative z-30 h-full bg-zinc-50 border-r border-zinc-200 flex flex-col transition-all duration-300 ease-in-out overflow-hidden",
-          !isSidebarOpen && "md:w-0"
+          !isSidebarOpen && "md:w-0",
         )}
       >
         <div className="p-3 flex flex-col h-full w-[260px]">
@@ -253,9 +265,9 @@ export default function App() {
                 }}
                 className={cn(
                   "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all",
-                  activeId === chat.id 
-                    ? "bg-zinc-200 text-zinc-900 font-medium" 
-                    : "text-zinc-600 hover:bg-zinc-100"
+                  activeId === chat.id
+                    ? "bg-zinc-200 text-zinc-900 font-medium"
+                    : "text-zinc-600 hover:bg-zinc-100",
                 )}
               >
                 <MessageSquare size={16} className="shrink-0" />
@@ -291,14 +303,14 @@ export default function App() {
         {/* Header */}
         <header className="h-14 border-b border-zinc-100 flex items-center px-4 justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500 transition-colors"
             >
               <Menu size={20} />
             </button>
             <h1 className="font-semibold text-zinc-800 truncate max-w-[200px] md:max-w-md">
-              {activeConversation?.title || 'Tin Chat'}
+              {activeConversation?.title || "Tin Chat"}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -317,7 +329,9 @@ export default function App() {
                   <Bot size={32} className="text-zinc-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold text-zinc-800">How can I help you today?</h2>
+                  <h2 className="text-2xl font-semibold text-zinc-800">
+                    How can I help you today?
+                  </h2>
                   <p className="text-zinc-500 mt-2 max-w-sm mx-auto">
                     Ask me anything, from writing code to summarizing articles.
                   </p>
@@ -327,7 +341,7 @@ export default function App() {
                     "Write a Python script for web scraping",
                     "Explain quantum computing in simple terms",
                     "Help me plan a 3-day trip to Tokyo",
-                    "Give me ideas for a healthy dinner"
+                    "Give me ideas for a healthy dinner",
                   ].map((suggestion) => (
                     <button
                       key={suggestion}
@@ -341,35 +355,50 @@ export default function App() {
               </div>
             ) : (
               activeConversation.messages.map((message) => (
-                <div 
-                  key={message.id} 
+                <div
+                  key={message.id}
                   className={cn(
                     "flex gap-4 md:gap-6",
-                    message.role === 'user' ? "flex-row-reverse" : "flex-row"
+                    message.role === "user" ? "flex-row-reverse" : "flex-row",
                   )}
                 >
-                  <div className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
-                    message.role === 'user' ? "bg-zinc-800 text-white" : "bg-zinc-100 text-zinc-600 border border-zinc-200"
-                  )}>
-                    {message.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
+                      message.role === "user"
+                        ? "bg-zinc-800 text-white"
+                        : "bg-zinc-100 text-zinc-600 border border-zinc-200",
+                    )}
+                  >
+                    {message.role === "user" ? (
+                      <User size={16} />
+                    ) : (
+                      <Bot size={16} />
+                    )}
                   </div>
-                  <div className={cn(
-                    "flex-1 min-w-0 space-y-2",
-                    message.role === 'user' ? "text-right" : "text-left"
-                  )}>
-                    <div className={cn(
-                      "inline-block max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed",
-                      message.role === 'user' 
-                        ? "bg-zinc-100 text-zinc-800" 
-                        : "bg-white text-zinc-800"
-                    )}>
+                  <div
+                    className={cn(
+                      "flex-1 min-w-0 space-y-2",
+                      message.role === "user" ? "text-right" : "text-left",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "inline-block max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                        message.role === "user"
+                          ? "bg-zinc-100 text-zinc-800"
+                          : "bg-white text-zinc-800",
+                      )}
+                    >
                       <div className="prose prose-sm max-w-none prose-zinc prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:text-zinc-50">
                         <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
                     </div>
                     <div className="text-[10px] text-zinc-400 px-1">
-                      {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -405,10 +434,10 @@ export default function App() {
                 onKeyDown={handleKeyDown}
                 placeholder="Message ChatGPTin..."
                 className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-2 px-3 text-sm max-h-40 min-h-[40px]"
-                style={{ height: 'auto' }}
+                style={{ height: "auto" }}
                 onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
+                  const target = e.target;
+                  target.style.height = "auto";
                   target.style.height = `${target.scrollHeight}px`;
                 }}
               />
@@ -417,9 +446,9 @@ export default function App() {
                 disabled={!input.trim() || isLoading}
                 className={cn(
                   "p-2 rounded-xl transition-all",
-                  input.trim() && !isLoading 
-                    ? "bg-zinc-800 text-white hover:bg-zinc-700" 
-                    : "bg-zinc-200 text-zinc-400 cursor-not-allowed"
+                  input.trim() && !isLoading
+                    ? "bg-zinc-800 text-white hover:bg-zinc-700"
+                    : "bg-zinc-200 text-zinc-400 cursor-not-allowed",
                 )}
               >
                 <Send size={18} />
