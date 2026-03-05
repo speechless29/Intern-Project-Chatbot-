@@ -169,7 +169,7 @@ export default function App() {
       }
 
       // Generate title if it's the first message
-      if (chat.messages.length === 0) {
+      if (chat.messages.length === 1) {
         const title = await generateTitle(userMessage.content);
         setConversations(prev => prev.map(c => 
           c.id === currentId ? { ...c, title } : c
