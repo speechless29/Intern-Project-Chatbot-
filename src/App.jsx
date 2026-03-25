@@ -24,9 +24,29 @@ function cn(...inputs) {
 
 const STORAGE_KEY = "gemini_chat_history";
 
+// Helper function to safely load from local storage
+const loadInitialConversations = () => {
+  if (typeof window === "undefined") return [];
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse history", e);
+    }
+  }
+  return [];
+};
+
 export default function App() {
-  const [conversations, setConversations] = useState([]);
-  const [activeId, setActiveId] = useState(null);
+  // Lazy initialization for state
+  const [conversations, setConversations] = useState(loadInitialConversations);
+
+  const [activeId, setActiveId] = useState(() => {
+    const initialData = loadInitialConversations();
+    return initialData.length > 0 ? initialData[0].id : null;
+  });
+
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -34,23 +54,7 @@ export default function App() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Load from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setConversations(parsed);
-        if (parsed.length > 0) {
-          setActiveId(parsed[0].id);
-        }
-      } catch (e) {
-        console.error("Failed to parse history", e);
-      }
-    }
-  }, []);
-
-  // Save to localStorage
+  // Save to localStorage whenever conversations change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
   }, [conversations]);
