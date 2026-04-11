@@ -487,6 +487,13 @@ function MainChat({ user, onLogout }) {
             <div className="px-2 py-1 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">
               Pro Chat
             </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 transition-colors"
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
 
