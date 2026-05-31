@@ -12,6 +12,11 @@
   body {
     @apply bg-white text-zinc-900 antialiased;
   }
+
+  html.dark body {
+    background: #020617;
+    color: #e2e8f0;
+  }
 }
 
 /* Custom Scrollbar */
@@ -29,4 +34,8 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-zinc-300;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.7);
 }

@@ -7,10 +7,8 @@ import {
   User,
   Bot,
   Menu,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  MoreVertical,
+  Moon,
+  Sun,
   LogOut,
   File,
 } from "lucide-react";
@@ -22,6 +20,7 @@ import { sendMessageStream, generateTitle } from "./services/geminiService";
 import { processAndUploadPDF } from "./services/pdfService";
 import { getUserFiles } from "./services/storageService";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { useUIStore } from "./store/useUIStore";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import PDFUploader from "./components/PDFUploader";
@@ -86,7 +85,10 @@ function MainChat({ user, onLogout }) {
 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const theme = useUIStore((state) => state.theme);
+  const toggleTheme = useUIStore((state) => state.toggleTheme);
+  const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
@@ -119,6 +121,12 @@ function MainChat({ user, onLogout }) {
     loadUserFiles();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("app_theme", theme);
+  }, [theme]);
+
   const activeConversation = conversations.find((c) => c.id === activeId);
 
   const createNewChat = () => {
@@ -130,7 +138,7 @@ function MainChat({ user, onLogout }) {
     };
     setConversations((prev) => [newChat, ...prev]);
     setActiveId(newChat.id);
-    if (window.innerWidth < 768) setIsSidebarOpen(false);
+    if (window.innerWidth < 768) setSidebarOpen(false);
   };
 
   const deleteChat = (id, e) => {
@@ -349,7 +357,14 @@ function MainChat({ user, onLogout }) {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white overflow-hidden font-sans">
+    <div
+      className={cn(
+        "flex h-screen w-full overflow-hidden font-sans",
+        theme === "dark"
+          ? "bg-slate-950 text-slate-100"
+          : "bg-white text-zinc-900",
+      )}
+    >
       {/* Sidebar Overlay for Mobile */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -357,7 +372,7 @@ function MainChat({ user, onLogout }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => setSidebarOpen(false)}
             className="fixed inset-0 bg-black/20 z-20 md:hidden"
           />
         )}
@@ -371,21 +386,34 @@ function MainChat({ user, onLogout }) {
           x: isSidebarOpen ? 0 : -260,
         }}
         className={cn(
-          "fixed md:relative z-30 h-full bg-zinc-50 border-r border-zinc-200 flex flex-col transition-all duration-300 ease-in-out overflow-hidden",
+          "fixed md:relative z-30 h-full flex flex-col transition-all duration-300 ease-in-out overflow-hidden",
+          theme === "dark"
+            ? "bg-slate-950 border-slate-800"
+            : "bg-zinc-50 border-zinc-200",
           !isSidebarOpen && "md:w-0",
         )}
       >
         <div className="p-3 flex flex-col h-full w-[260px]">
           <button
             onClick={createNewChat}
-            className="flex items-center gap-3 px-3 py-2 w-full bg-white border border-zinc-200 rounded-lg text-sm font-medium hover:bg-zinc-100 transition-colors shadow-sm mb-4"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm font-medium transition-colors shadow-sm mb-4",
+              theme === "dark"
+                ? "bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-100"
+                : "bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700",
+            )}
           >
             <Plus size={16} />
             New Chat
           </button>
 
           <div className="flex-1 overflow-y-auto space-y-1">
-            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-3 mb-2">
+            <div
+              className={cn(
+                "text-[11px] font-semibold uppercase tracking-wider px-3 mb-2",
+                theme === "dark" ? "text-slate-400" : "text-zinc-400",
+              )}
+            >
               Recent Conversations
             </div>
             {conversations.map((chat) => (
@@ -393,7 +421,7 @@ function MainChat({ user, onLogout }) {
                 key={chat.id}
                 onClick={() => {
                   setActiveId(chat.id);
-                  if (window.innerWidth < 768) setIsSidebarOpen(false);
+                  if (window.innerWidth < 768) setSidebarOpen(false);
                 }}
                 className={cn(
                   "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all",
@@ -413,7 +441,12 @@ function MainChat({ user, onLogout }) {
               </div>
             ))}
             {conversations.length === 0 && (
-              <div className="px-3 py-8 text-center text-zinc-400 text-xs italic">
+              <div
+                className={cn(
+                  "px-3 py-8 text-center text-xs italic",
+                  theme === "dark" ? "text-slate-400" : "text-zinc-400",
+                )}
+              >
                 No history yet
               </div>
             )}
@@ -471,25 +504,66 @@ function MainChat({ user, onLogout }) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full relative min-w-0">
         {/* Header */}
-        <header className="h-14 border-b border-zinc-100 flex items-center px-4 justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+        <header
+          className={cn(
+            "h-14 flex items-center px-4 justify-between backdrop-blur-md sticky top-0 z-10",
+            theme === "dark"
+              ? "border-b border-slate-800 bg-slate-950/90"
+              : "border-b border-zinc-100 bg-white/80",
+          )}
+        >
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500 transition-colors"
+              onClick={() => setSidebarOpen(!isSidebarOpen)}
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                theme === "dark"
+                  ? "text-slate-200 hover:bg-slate-800"
+                  : "text-zinc-500 hover:bg-zinc-100",
+              )}
             >
               <Menu size={20} />
             </button>
-            <h1 className="font-semibold text-zinc-800 truncate max-w-[200px] md:max-w-md">
+            <h1
+              className={cn(
+                "font-semibold truncate max-w-[200px] md:max-w-md",
+                theme === "dark" ? "text-slate-100" : "text-zinc-800",
+              )}
+            >
               {activeConversation?.title || "AI Chat"}
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <div className="px-2 py-1 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">
+            <button
+              onClick={toggleTheme}
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                theme === "dark"
+                  ? "text-slate-200 hover:bg-slate-800"
+                  : "text-zinc-500 hover:bg-zinc-100",
+              )}
+              title="Toggle theme"
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <div
+              className={cn(
+                "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-tighter",
+                theme === "dark"
+                  ? "bg-slate-900 text-slate-300"
+                  : "bg-zinc-100 text-zinc-500",
+              )}
+            >
               Pro Chat
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 transition-colors"
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                theme === "dark"
+                  ? "text-slate-200 hover:bg-slate-800"
+                  : "text-zinc-500 hover:bg-zinc-100",
+              )}
               title="Logout"
             >
               <LogOut size={18} />
@@ -498,18 +572,45 @@ function MainChat({ user, onLogout }) {
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-8">
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto px-4 py-8",
+            theme === "dark" ? "bg-slate-950" : "bg-white",
+          )}
+        >
           <div className="max-w-3xl mx-auto space-y-8">
             {!activeConversation || activeConversation.messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center pt-20 text-center space-y-6">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-50 flex items-center justify-center border border-zinc-100 shadow-sm">
-                  <Bot size={32} className="text-zinc-400" />
+                <div
+                  className={cn(
+                    "w-16 h-16 rounded-2xl flex items-center justify-center border shadow-sm",
+                    theme === "dark"
+                      ? "bg-slate-900 border-slate-800"
+                      : "bg-zinc-50 border-zinc-100",
+                  )}
+                >
+                  <Bot
+                    size={32}
+                    className={
+                      theme === "dark" ? "text-slate-400" : "text-zinc-400"
+                    }
+                  />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold text-zinc-800">
+                  <h2
+                    className={cn(
+                      "text-2xl font-semibold",
+                      theme === "dark" ? "text-slate-100" : "text-zinc-800",
+                    )}
+                  >
                     How can I help you today?
                   </h2>
-                  <p className="text-zinc-500 mt-2 max-w-sm mx-auto">
+                  <p
+                    className={cn(
+                      "mt-2 max-w-sm mx-auto",
+                      theme === "dark" ? "text-slate-400" : "text-zinc-500",
+                    )}
+                  >
                     Ask me anything or upload a PDF to get started.
                   </p>
                 </div>
@@ -523,7 +624,12 @@ function MainChat({ user, onLogout }) {
                     <button
                       key={suggestion}
                       onClick={() => setInput(suggestion)}
-                      className="p-3 text-left text-sm border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors text-zinc-600"
+                      className={cn(
+                        "p-3 text-left text-sm border rounded-xl hover:opacity-90 transition-colors",
+                        theme === "dark"
+                          ? "border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
+                          : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50",
+                      )}
                     >
                       {suggestion}
                     </button>
@@ -544,7 +650,9 @@ function MainChat({ user, onLogout }) {
                       "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
                       message.role === "user"
                         ? "bg-zinc-800 text-white"
-                        : "bg-zinc-100 text-zinc-600 border border-zinc-200",
+                        : theme === "dark"
+                          ? "bg-slate-800 text-slate-200 border border-slate-700"
+                          : "bg-zinc-100 text-zinc-600 border border-zinc-200",
                     )}
                   >
                     {message.role === "user" ? (
@@ -563,8 +671,12 @@ function MainChat({ user, onLogout }) {
                       className={cn(
                         "inline-block max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed",
                         message.role === "user"
-                          ? "bg-zinc-100 text-zinc-800"
-                          : "bg-white text-zinc-800",
+                          ? theme === "dark"
+                            ? "bg-slate-800 text-slate-100"
+                            : "bg-zinc-100 text-zinc-800"
+                          : theme === "dark"
+                            ? "bg-slate-900 text-slate-100"
+                            : "bg-white text-zinc-800",
                       )}
                     >
                       <div className="prose prose-sm max-w-none prose-zinc prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:text-zinc-50">
@@ -583,15 +695,38 @@ function MainChat({ user, onLogout }) {
             )}
             {isLoading && (
               <div className="flex gap-4 md:gap-6">
-                <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-600 border border-zinc-200 flex items-center justify-center shrink-0 animate-pulse">
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 animate-pulse",
+                    theme === "dark" ? "bg-slate-800" : "bg-zinc-100",
+                  )}
+                >
                   <Bot size={16} />
                 </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex gap-1 items-center h-8">
-                    <span className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce"></span>
-                  </div>
+                <div
+                  className={cn(
+                    "flex-1 rounded-3xl p-4 space-y-3 animate-pulse",
+                    theme === "dark" ? "bg-slate-900" : "bg-white",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "h-3 rounded-full",
+                      theme === "dark" ? "bg-slate-800" : "bg-zinc-200",
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "h-3 rounded-full w-5/6",
+                      theme === "dark" ? "bg-slate-800" : "bg-zinc-200",
+                    )}
+                  />
+                  <div
+                    className={cn(
+                      "h-3 rounded-full w-4/6",
+                      theme === "dark" ? "bg-slate-800" : "bg-zinc-200",
+                    )}
+                  />
                 </div>
               </div>
             )}
@@ -600,7 +735,13 @@ function MainChat({ user, onLogout }) {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent">
+        <div
+          className={cn(
+            "p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent",
+            theme === "dark" &&
+              "bg-gradient-to-t from-slate-950 via-slate-950 to-transparent",
+          )}
+        >
           <div className="max-w-3xl mx-auto">
             {/* PDF Uploader */}
             <PDFUploader
@@ -610,7 +751,14 @@ function MainChat({ user, onLogout }) {
 
             {/* Chat Input */}
             <div className="relative">
-              <div className="relative flex items-end gap-2 bg-zinc-50 border border-zinc-200 rounded-2xl p-2 focus-within:border-zinc-400 transition-colors shadow-sm">
+              <div
+                className={cn(
+                  "relative flex items-end gap-2 rounded-2xl p-2 focus-within:border transition-colors shadow-sm",
+                  theme === "dark"
+                    ? "bg-slate-900 border-slate-700"
+                    : "bg-zinc-50 border-zinc-200 focus-within:border-zinc-400",
+                )}
+              >
                 <textarea
                   ref={inputRef}
                   rows={1}
